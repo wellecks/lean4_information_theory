@@ -11,6 +11,8 @@ Current main definitions:
 - Entropy (`entropy`), KL-divergence (`kld`)
 
 -/
+import LLMstep
+
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 import Mathlib.Analysis.Convex.Jensen
