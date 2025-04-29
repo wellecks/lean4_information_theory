@@ -145,7 +145,6 @@ end pmf
 section entropy
 /- 2.1 Entropy -/
 -- The entropy $H(X)$ of a discrete random variable $X$
--- We sum over the support to avoid splitting log(0) into a separate case.
 def entropy (p : pmf Ω) : ℝ :=
    ∑ x, - ((p x) * (log (p x)))
 
@@ -175,12 +174,44 @@ section kld
 /- We say that `q` dominates `p` if $q(x) = 0$ implies $p(x) = 0$.
    Equivalently, we can say that the measure of `p`
    is absolutely continuous with respect to the measure of `q`.
+   We prove the equivalence of this subset form below.
    See: https://en.wikipedia.org/wiki/Absolute_continuity. -/
 class Dominates (q: pmf Ω) (p: pmf Ω) where
    abs_cont : p.support ⊆ q.support
 
 theorem dominates_mem_supp (p q: pmf Ω)[Dominates q p]
    (x : Ω) (hsupp: x ∈ p.support) : x ∈ q.support := Dominates.abs_cont hsupp
+
+lemma dominates_qx0_px0 (p q : pmf Ω)[Dominates q p] (x : Ω) : q x = 0 → p x = 0 := by
+   intro hq0
+   by_contra h
+   have hx_p : x ∈ p.support := by
+      simpa [mem_support_iff]
+   have hx_q : x ∈ q.support := dominates_mem_supp p q x hx_p
+   simp_all
+
+lemma qx0_px0_dominates (p q : pmf Ω) (hzero : ∀ x, q x = 0 → p x = 0)
+   : Dominates q p := by
+      refine ⟨?hsubset⟩
+      intro x hx_p
+      have hp_ne : p x ≠ 0 := by
+         simpa [mem_support_iff] using hx_p
+      by_contra hx_not
+      have hq0 : q x = 0 := by
+         have : x ∉ q.support := by
+            simpa [mem_support_iff] using hx_not
+         simpa
+      have hp0 : p x = 0 := hzero x hq0
+      exact hp_ne hp0
+
+/- The subset condition in `Dominates` is equivalent to the condition
+   if $q(x) = 0$ implies $p(x) = 0$. -/
+theorem dominates_iff_zero_imp_zero (p q : pmf Ω) :
+   Dominates q p ↔ (∀ x, q x = 0 → p x = 0) := by
+   constructor
+   ·  intro hdom
+      exact dominates_qx0_px0 p q
+   ·  exact qx0_px0_dominates p q
 
 theorem dominated_lte (p q: pmf Ω)[Dominates q p] :
    ∑ x ∈ p.support, q x ≤ ∑ x ∈ q.support, q x := by
