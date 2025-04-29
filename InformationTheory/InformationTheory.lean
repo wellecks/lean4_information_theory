@@ -10,13 +10,16 @@ Current main definitions:
 - Probability mass function (`pmf`)
 - Entropy (`entropy`), KL-divergence (`kld`)
 
+Author: Sean Welleck
 -/
-import LLMstep
+import LLMlean
 
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 import Mathlib.Analysis.Convex.Jensen
 import Mathlib.Algebra.Order.Field.Basic
+import Mathlib.Probability.ProbabilityMassFunction.Basic
+import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
 namespace InformationTheory
 
@@ -26,105 +29,129 @@ open Classical BigOperators Real
 
 variable {Ω : Type*}[Fintype Ω]
 
-/- Define our own pmf, partly for learning and partly for convenience.
-   Differences with mathlib's PMF include:
-   1. The mass function `f` is defined on ℝ versus ℝ≥0∞. This led to
-     fewer conversions to and from ℝ and `ENNReal` (e.g., in proofs
-     involving logarithms).
-   2. Fintype: this allowed for Jensen's results for `Finset`s.
-   3. Explicit `non_neg` condition (following from (1)).
+section pmf
+
+/- **`pmf Ω`** is a finite-alphabet real-valued probability
+mass function. This had advantages over `PMF Ω` for this formalization:
+   1. Working in ℝ led to fewer conversions to and from ℝ≥0∞,
+      e.g., in proofs involving logarithms.
+   2. We can use Mathlib's Jensen inequality for `Finset` sums
+      (`ConvexOn.le_map_sum` / `ConcaveOn.le_map_sum`).
+
+Also note that `pmf` has an explicit non-negativity condition due to (1).
 -/
-structure pmf (Ω : Type*)[Fintype Ω] :=
+structure pmf (Ω : Type*)[Fintype Ω] where
    (f : Ω → ℝ)
    (non_neg : ∀ x : Ω, 0 ≤ f x)
    (sum_one : HasSum f 1)
 
 -- Allows for `p x` notation.
-instance funLike : FunLike (pmf Ω) Ω fun _ => ℝ where
-  coe p x := p.f x
-  coe_injective' p q h := by
-   cases p
-   cases q
-   congr
+instance pmfCoe : CoeFun (pmf Ω) (fun _ => Ω → ℝ) where
+  coe p := p.f
 
 theorem hasSum_coe_one (p : pmf Ω) : HasSum p 1 := p.sum_one
 
 -- Probability of any outcome is at most one.
 theorem coe_le_one (p : pmf Ω) (x : Ω) : p x ≤ 1 := by
-   refine' hasSum_le _ (hasSum_ite_eq x (p x)) (hasSum_coe_one p)
-   intro x
-   split_ifs with h
-   rw [h]
-   exact p.non_neg x
+  refine' hasSum_le _ (hasSum_ite_eq x (p x)) (hasSum_coe_one p)
+  intro x'
+  by_cases hx : x' = x
+  · simp [hx]
+  · simp [hx, p.non_neg x']
 
 -- Writes has_sum in terms of Finset.sum
 theorem pmf.sum_one' (p : pmf Ω) : ∑ x, p x = 1 := by
-   have hsum := p.sum_one.tsum_eq
-   rw [tsum_eq_sum] at hsum
-   exact hsum
-   intros x hx
-   simp at hx
+   rw [← tsum_fintype]
+   exact p.sum_one.tsum_eq
 
 /-- The support of a `pmf` is the set where it is nonzero. -/
 def pmf.support (p : pmf Ω) : Finset Ω := {x | p x ≠ 0}.toFinset
 
 theorem mem_support_pos (p : pmf Ω) (x : Ω) : x ∈ p.support ↔ p x > 0 := by
-   apply Iff.intro
-   unfold pmf.support
-   intro hx
-   rw [Set.mem_toFinset] at hx
-   simp [hx]
-   rw [lt_iff_le_and_ne]
-   apply And.intro
-   exact p.non_neg x
-   apply Ne.symm
-   simp
-   exact hx
-   intro h
-   unfold pmf.support
-   rw [Set.mem_toFinset]
-   simp [h]
-   exact ne_of_gt h
+   constructor
+   ·  intro hx
+      unfold pmf.support at hx
+      simp_all [Set.mem_toFinset]
+      rw [lt_iff_le_and_ne]
+      constructor
+      ·  exact p.non_neg x
+      ·  simp_all [Ne.symm]
+   ·  intro h
+      unfold pmf.support
+      simp_all [Set.mem_toFinset]
+      linarith
 
 @[simp]
 theorem mem_support_iff (p : pmf Ω) (x : Ω) : x ∈ p.support ↔ p x ≠ 0 := by
    unfold pmf.support
-   rw [Set.mem_toFinset]
-   simp
+   simp [Set.mem_toFinset]
 
 @[simp]
-theorem pmf.support_sum (p: pmf Ω) : ∑ x in p.support, p x = 1 := by
+theorem pmf.support_sum (p: pmf Ω) : ∑ x ∈ p.support, p x = 1 := by
    rw [← p.sum_one']
    apply Finset.sum_subset
-   simp
-   intro x _ hxs
-   simp at hxs
-   exact hxs
+   ·  exact Finset.subset_univ p.support
+   ·  simp_all
 
-theorem support_pos (p: pmf Ω) : 0 < ∑ x in p.support, p x := by simp
+theorem support_pos (p: pmf Ω) : 0 < ∑ x ∈ p.support, p x := by simp
 
-theorem support_eq_inner (p: pmf Ω) (f : Ω → ℝ) (g : Ω → ℝ) (hsupp: ∀ x ∈ p.support, f x = g x) :
-    ∑ x in p.support, f x = ∑ x in p.support, g x := by
-      simp only [Finset.sum_congr rfl hsupp]
+theorem support_eq_inner (p: pmf Ω) (f : Ω → ℝ) (g : Ω → ℝ)
+  (hsupp: ∀ x ∈ p.support, f x = g x) :
+     ∑ x ∈ p.support, f x = ∑ x ∈ p.support, g x := by
+   simp only [Finset.sum_congr rfl hsupp]
 
 @[simp]
 theorem support_nonempty (p : pmf Ω) : p.support.Nonempty := by
    by_contra h
    simp at h
-   have h' : ∑ x in p.support, p x = ∑ x in (∅: Finset Ω), p x := by rw [h]
+   have h' : ∑ x ∈ p.support, p x = ∑ x ∈ (∅: Finset Ω), p x := by rw [h]
    simp [Finset.sum_empty] at h'
 
-theorem log_eq_inner {s} (f : Ω → ℝ) (g : Ω → ℝ) (hsupp: ∑ x in s, f x = ∑ x in s, g x) :
-    log (∑ x in s, f x) = log (∑ x in s, g x) := by simp [hsupp]
+/--Turn a mathlib `PMF` into our real-valued `pmf` (finite alphabet). -/
+def PMF.to_pmf {Ω : Type*} [Fintype Ω] (p : PMF Ω) : pmf Ω where
+  f        := fun x ↦ (p x).toReal
+  non_neg  := fun x ↦ (p x).toReal_nonneg
+  sum_one  := by
+   have h_has := hasSum_fintype (fun x : Ω ↦ (p x).toReal)
+   have h_sum : (∑ x : Ω, (p x).toReal) = 1 := by
+      rw [← ENNReal.toReal_sum]
+      ·  have : ∑ a, p a = 1 := by simp [← tsum_fintype, p.tsum_coe]
+         rw [this]
+         exact ENNReal.toReal_one
+      ·  intro x hx
+         exact p.apply_ne_top x
+   simp_all
 
+/--Turn our finite, real-valued `pmf` into mathlib’s `PMF`. -/
+def pmf.toPMF (p : pmf Ω) : PMF Ω := by
+   let f := fun x ↦ ENNReal.ofReal (p x)
+   refine PMF.ofFinset f p.support ?sum_one ?outside_zero
+   · simp [pmf.support_sum, f, ENNReal.ofReal_toReal]
+     rw [← ENNReal.ofReal_sum_of_nonneg]
+     · simp
+     · intro x hx
+       exact p.non_neg x
+   · intro x hx
+     simp_all
+     simp [f, hx]
+
+omit [Fintype Ω] in
+theorem log_eq_inner {s} (f : Ω → ℝ) (g : Ω → ℝ)
+   (hsupp: ∑ x ∈ s, f x = ∑ x ∈ s, g x) :
+    log (∑ x ∈ s, f x) = log (∑ x ∈ s, g x) := by simp [hsupp]
+
+end pmf
+
+section entropy
 /- 2.1 Entropy -/
 -- The entropy $H(X)$ of a discrete random variable $X$
+-- We sum over the support to avoid splitting log(0) into a separate case.
 def entropy (p : pmf Ω) : ℝ :=
-   ∑ x in p.support, - ((p x) * (log (p x)))
+   ∑ x, - ((p x) * (log (p x)))
 
 -- If $X∼p(x), the expected value of the random variable $g(X)$
 def expected_value (p : pmf Ω) (g : Ω → ℝ) : ℝ :=
-   ∑ x in p.support, (p x) * (g x)
+   ∑ x, (p x) * (g x)
 
 -- Remark 2.3: The entropy of $X$ is the expected value of the random variable
 -- $log (1/p(X))$, where $X∼p(x)$.
@@ -133,17 +160,17 @@ lemma entropy_as_expectation (p : pmf Ω) : entropy p = expected_value p (λ x =
 
 -- L2.1.1: Entropy is non-negative.
 lemma entropy_nonneg (p: pmf Ω) : entropy p ≥ 0 := by
-   rw [entropy]
    apply Finset.sum_nonneg
-   intro x _
-   simp
-   rw [mul_nonpos_iff]
-   left
+   intro x hx
+   simp [mul_nonpos_iff]
    constructor
-   exact p.non_neg x
-   rw [log_nonpos_iff']
-   exact coe_le_one p x
-   exact p.non_neg x
+   constructor
+   · exact p.non_neg x
+   · rw [log_nonpos_iff] <;> simp [coe_le_one, p.non_neg]
+
+end entropy
+
+section kld
 
 /- We say that `q` dominates `p` if $q(x) = 0$ implies $p(x) = 0$.
    Equivalently, we can say that the measure of `p`
@@ -156,23 +183,38 @@ theorem dominates_mem_supp (p q: pmf Ω)[Dominates q p]
    (x : Ω) (hsupp: x ∈ p.support) : x ∈ q.support := Dominates.abs_cont hsupp
 
 theorem dominated_lte (p q: pmf Ω)[Dominates q p] :
-   ∑ x in p.support, q x ≤ ∑ x in q.support, q x := by
-      refine' Finset.sum_le_sum_of_subset_of_nonneg Dominates.abs_cont _
-      intro x _ _
-      exact q.non_neg x
+   ∑ x ∈ p.support, q x ≤ ∑ x ∈ q.support, q x := by
+   refine' Finset.sum_le_sum_of_subset_of_nonneg Dominates.abs_cont _
+   intro x _ _
+   exact q.non_neg x
 
 theorem dominated_supp_gt_0 (p q: pmf Ω)[Dominates q p] :
-   0 < ∑ x in pmf.support p, q x := by
+   0 < ∑ x ∈ pmf.support p, q x := by
    apply Finset.sum_pos
-   intro x hx
-   have h := dominates_mem_supp p q x hx
-   rw [mem_support_pos] at h
-   exact h
-   simp
+   ·  intro x hx
+      have h := dominates_mem_supp p q x hx
+      rw [mem_support_pos] at h
+      exact h
+   ·  exact support_nonempty p
 
 -- D2.26 KL divergence
 def kld (p q: pmf Ω)[Dominates q p]: ℝ :=
-   ∑ x in p.support, (p x)*(log (p x / q x))
+   ∑ x, if p x = 0 then 0
+        else (p x)*(log (p x / q x))
+
+def kld_supp (p q: pmf Ω)[Dominates q p]: ℝ :=
+   ∑ x ∈ p.support, (p x)*(log (p x / q x))
+
+lemma kld_eq_kld_supp (p q : pmf Ω)[Dominates q p] :
+   kld p q = kld_supp p q := by
+   rw [kld, kld_supp]
+   -- Split the equality into two cases using the set difference
+   have h_filter :
+      (∑ x : Ω, if hp : p x = 0 then 0 else p x * log (p x / q x)) =
+        ∑ x ∈ Finset.filter (fun x : Ω ↦ p x ≠ 0) Finset.univ,
+            p x * log (p x / q x) := by
+      simp [Finset.sum_filter, mem_support_iff]
+   simpa [h_filter, pmf.support]
 
 -- 2.6: Jensen's Inequality And Its Consequences
 /- Thm. 2.6.2 (Jensen's Inequality.)
@@ -182,14 +224,14 @@ def kld (p q: pmf Ω)[Dominates q p]: ℝ :=
 theorem jensens_inequality_concave
    {S : Set ℝ} (f: ℝ → ℝ) (g: Ω → ℝ)
    (p: pmf Ω) (hf: ConcaveOn ℝ S f) (hmem: ∀ x ∈ p.support, g x ∈ S) :
-   ∑ x in p.support, (p x) * f (g x) ≤ f (∑ x in p.support, (p x) * (g x)) := by
+   ∑ x ∈ p.support, (p x) * f (g x) ≤ f (∑ x ∈ p.support, (p x) * (g x)) := by
    have hnonneg : ∀ (x : Ω), x ∈ p.support → 0 ≤ p x := by
       intro x _
       exact p.non_neg x
    refine' hf.le_map_sum hnonneg p.support_sum hmem
 
 theorem neg_sum {α: Type*} (S : Finset α) (f : α → ℝ) :
-   - ∑ x in S, f x = ∑ x in S, - (f x) := by simp
+   - ∑ x ∈ S, f x = ∑ x ∈ S, - (f x) := by simp
 
 theorem neg_logpq_eq_logqp (p q: pmf Ω)[Dominates q p] (x : Ω) (h : x ∈ p.support) :
    - log (p x / q x) = log (q x / p x) := by
@@ -214,48 +256,59 @@ theorem log_concave : ConcaveOn ℝ (Set.Ioi 0) log := by
 
 @[simp]
 theorem inv_supp_cancel (p : pmf Ω) (x : Ω) (hsupp: x ∈ p.support) : (p x)⁻¹ * (p x) = 1 := by
-   apply inv_mul_cancel
-   simpa using hsupp
+  have hx_pos := (mem_support_pos p x).mp hsupp
+  field_simp [hx_pos.ne']
 
 /- Theorem 2.6.3 (Information inequality)
    Let $p(x), q(x), x ∈ X$ be two probability mass functions.
-   Then $KL(p || q) ≥ 0$. -/
-theorem information_inequality (p q: pmf Ω)[Dominates q p]: kld p q ≥ 0 := by
-   rw [kld]
-   suffices hrev : - kld p q ≤ 0
-   simpa using hrev
+   Then $KL(p || q) ≥ 0$.
 
-   unfold kld
+   This version uses the KL defined on the support.
+-/
+theorem information_inequality_supp (p q: pmf Ω)[Dominates q p]: kld_supp p q ≥ 0 := by
+   rw [kld_supp]
+   suffices hrev : - kld_supp p q ≤ 0 by
+    apply neg_nonpos.mp
+    exact hrev
+
+   unfold kld_supp
    rw [neg_sum]
    calc
-      ∑ x in p.support, -(p x * log (p x / q x)) = ∑ x in p.support, p x * log (q x / p x) := by
-         rw [Finset.sum_eq_sum_iff_of_le]
-         intros x hx
+      ∑ x ∈ p.support, -(p x * log (p x / q x)) = ∑ x ∈ p.support, p x * log (q x / p x) := by
+         apply Finset.sum_congr rfl
+         intro x hx
          exact neg_plogpq_eq_plogqp p q x hx
-         intros x hx
-         rw [neg_plogpq_eq_plogqp p q x hx]
-      _ ≤ log (∑ x in p.support, p x * (q x / p x)) := by
-         apply jensens_inequality_concave (S:= (Set.Ioi 0)) log (λ x => (q x / p x)) p  _
+      _ ≤ log (∑ x ∈ p.support, p x * (q x / p x)) := by
+         apply jensens_inequality_concave (S:= (Set.Ioi 0)) log (λ x => (q x / p x)) p log_concave
          intros x hp
          have hq := dominates_mem_supp p q x hp
          rw [mem_support_pos] at hp
          rw [mem_support_pos] at hq
          simp
          apply div_pos
-         exact hq
-         exact hp
-         exact log_concave
-      _ = log (∑ x in p.support, q x) := by
+         · exact hq
+         · exact hp
+      _ = log (∑ x ∈ p.support, q x) := by
          ring_nf
          apply log_eq_inner
          apply support_eq_inner
          intro x hx
          rwa [mul_assoc, mul_comm, mul_assoc, inv_supp_cancel p x, mul_one]
-      _ ≤ log (∑ x in q.support, q x) := by
-         rw [log_le_log]
-         exact dominated_lte p q
-         exact dominated_supp_gt_0 p q
-         exact support_pos q
+      _ ≤ log (∑ x ∈ q.support, q x) := by
+         apply log_le_log
+         · exact dominated_supp_gt_0 p q
+         · apply dominated_lte p q
       _ = 0 := by
-         rw [q.support_sum]
-         simp
+         simp [q.support_sum]
+
+/- Theorem 2.6.3 (Information inequality)
+   Let $p(x), q(x), x ∈ X$ be two probability mass functions.
+   Then $KL(p || q) ≥ 0$.
+-/
+theorem information_inequality (p q: pmf Ω)[Dominates q p]: kld p q ≥ 0 := by
+   rw [kld_eq_kld_supp]
+   apply information_inequality_supp
+
+end kld
+
+end
