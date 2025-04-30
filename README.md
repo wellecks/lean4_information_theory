@@ -1,9 +1,19 @@
-Information theory basics from Chapter 2 of
-   "Elements of Information Theory" by Thomas M. Cover & Joy A. Thomas.
 
-Current main results:
-- Information inequality (`information_inequality`)
+# Basic probability and information theory in Lean 
 
-Current main definitions:
-- Probability mass function (`pmf`)
-- Entropy (`entropy`), KL-divergence (`kld`)
+
+#### Scope  
+This project started as a formalization of Chapter 2 of *Elements of Information Theory* by Cover & Thomas. It now serves as a small playground for discrete probability and information theory. 
+
+---
+
+#### Current contents
+
+| file | main definitions | main results |
+|------|-----------------|--------------------|
+| `InformationTheory.lean` <br> This follows Chapter 2 of Cover & Thomas.| • `pmf Ω`: finite real PMF<br>• entropy, KL divergence | • basic pmf lemmas<br>• non-negativity of entropy and KL divergence |
+| `FDivergence.lean` | • F-divergence  | • non-negativity<br>• KL is an F-divergence|
+
+----
+
+Author: Sean Welleck
