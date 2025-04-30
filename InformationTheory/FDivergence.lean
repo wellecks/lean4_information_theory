@@ -14,6 +14,7 @@ import LLMlean
 import InformationTheory.InformationTheory
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.Convex.SpecificFunctions.Basic
+import Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
 import Mathlib.Analysis.Convex.Jensen
 import Mathlib.Algebra.Order.Field.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Basic
@@ -30,7 +31,6 @@ open Classical BigOperators Real
 variable {Ω : Type*}[Fintype Ω]
 
 class FDivFunction (f : ℝ → ℝ) where
-  nonneg : ∀ x, 0 ≤ f x
   one : f 1 = 0
   convex : ConvexOn ℝ (Set.Ici 0) f
 
@@ -56,6 +56,7 @@ lemma sum_cancel (f : ℝ → ℝ) [FDivFunction f] (p q : pmf Ω) [Dominates q 
     · simp_all [dominates_qx0_px0 p q x]
     · field_simp [h]
 
+/- F-divergence is non-negative. -/
 theorem fdiv_nonneg (f : ℝ → ℝ) [FDivFunction f] (p q : pmf Ω) [Dominates q p]:
     0 ≤ fdiv f p q := by
   calc
@@ -70,3 +71,25 @@ theorem fdiv_nonneg (f : ℝ → ℝ) [FDivFunction f] (p q : pmf Ω) [Dominates
       _ = f (∑ x, p.f x) := by rw [sum_cancel f p q]
       _ = f 1 := by rw [pmf.sum_one']
       _ = 0 := by exact FDivFunction.one
+
+/- KL divergence is a f-divergence. -/
+def kldivF : ℝ → ℝ := fun x ↦ x * log x
+
+instance : FDivFunction kldivF where
+  one := by simp [kldivF]
+  convex := Real.convexOn_mul_log
+
+theorem kldiv_is_fdivergence (p q : pmf Ω) [Dominates q p] :
+  fdiv kldivF p q = kld p q := by
+  unfold fdiv kldivF kld
+  apply Finset.sum_congr rfl
+  intro x hx
+  by_cases hp : p x = 0
+  · simp [hp]
+  · have hq : q x ≠ 0 := dominates_pxne0_qxne0 p q x hp
+    field_simp [hq, hp]
+
+theorem kldiv_nonneg (p q : pmf Ω) [Dominates q p] :
+  0 ≤ kld p q := by
+  rw [← kldiv_is_fdivergence]
+  exact fdiv_nonneg kldivF p q

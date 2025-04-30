@@ -190,6 +190,11 @@ lemma dominates_qx0_px0 (p q : pmf Ω)[Dominates q p] (x : Ω) : q x = 0 → p x
    have hx_q : x ∈ q.support := dominates_mem_supp p q x hx_p
    simp_all
 
+lemma dominates_pxne0_qxne0 (p q : pmf Ω)[Dominates q p] (x : Ω) : p x ≠ 0 → q x ≠ 0 := by
+   by_contra h
+   simp at h
+   simp_all [h.2, dominates_qx0_px0 p q x]
+
 lemma qx0_px0_dominates (p q : pmf Ω) (hzero : ∀ x, q x = 0 → p x = 0)
    : Dominates q p := by
       refine ⟨?hsubset⟩
