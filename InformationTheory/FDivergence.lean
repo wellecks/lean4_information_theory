@@ -117,3 +117,42 @@ theorem kldiv_nonneg (p q : pmf Ω) [Dominates q p] :
   0 ≤ kld p q := by
   rw [← kldiv_is_fdivergence]
   exact fdiv_nonneg kldivF p q
+
+/- Total variation distance. -/
+def tvF : ℝ → ℝ := fun x ↦
+  (1 / 2) * |x - 1|
+
+instance : FDivFunction tvF where
+  one := by simp [tvF]
+  convex := by
+    unfold tvF
+    apply ConvexOn.smul
+    · norm_num
+    · simp_rw [abs_eq_max_neg]
+      apply ConvexOn.sup
+      · exact ConvexOn.sub
+          (convexOn_id (convex_Ici 0))
+          (concaveOn_const 1 (convex_Ici 0))
+      · simp
+        exact ConvexOn.sub
+          (convexOn_const 1 (convex_Ici 0))
+          (convexOn_id (convex_Ici 0))
+
+def tvd (p q: pmf Ω)[Dominates q p]: ℝ :=
+   ∑ x, (1/2)*|p x - q x|
+
+/- Total variation distance is a f-divergence. -/
+theorem tvd_is_fdivergence (p q : pmf Ω) [Dominates q p] :
+  fdiv tvF p q = tvd p q := by
+  unfold fdiv tvF tvd
+  apply Finset.sum_congr rfl
+  intro x hx
+  field_simp
+  by_cases hq : q x = 0
+  · simp_all [dominates_qx0_px0 p q x hq]
+  · field_simp [px_pos, abs_div, abs_of_pos]
+
+theorem tvd_nonneg (p q : pmf Ω) [Dominates q p] :
+  0 ≤ tvd p q := by
+  rw [← tvd_is_fdivergence]
+  exact fdiv_nonneg tvF p q

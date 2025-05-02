@@ -81,6 +81,9 @@ theorem mem_support_pos (p : pmf Ω) (x : Ω) : x ∈ p.support ↔ p x > 0 := b
       simp_all [Set.mem_toFinset]
       linarith
 
+theorem px_pos (p : pmf Ω) (x : Ω) (hp : p x ≠ 0) : 0 < p x := by
+   exact lt_of_le_of_ne (p.non_neg x) hp.symm
+
 @[simp]
 theorem mem_support_iff (p : pmf Ω) (x : Ω) : x ∈ p.support ↔ p x ≠ 0 := by
    unfold pmf.support
