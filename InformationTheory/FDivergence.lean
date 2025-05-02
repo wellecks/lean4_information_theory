@@ -1,5 +1,29 @@
 /- F-divergences and their basic properties
 
+This file defines f-divergences $D_f(p || q) = ∑_x q(x) f(p(x)/q(x))$ for discrete,
+finite probability mass functions `p` and `q`.
+
+## Scope and Limitations
+
+This formalization currently restricts the defining function `f` to be `ℝ → ℝ`.
+This means divergences like the standard KL divergence (`f(t) = t log t`) are supported,
+but others like the reverse KL divergence (which involve ∞) are currently excluded.
+
+This restriction is currently in place for pragmatic reasons related to
+boundary cases and existing mathlib infrastructure (at least as I understood them):
+
+- Convexity: we need to prove convexity on `Set.Ici 0` (`[0, ∞)`). I wasn't sure how to
+  do this for a function with a EReal or ENNReal co-domain.
+
+- Jensen's inequality: basic results like non-negativity depend on Jensen's inequality.
+  I believe this again requires convexity on `Set.Ici 0` (`[0, ∞)`) in its current form.
+  Invoking Jensen's inequality on `Set.Ioi 0` (`(0, ∞)`) runs into issues since `(p x / q x)`
+  can equal zero, and a condition for Jensen's inequality is that `(p x / q x)` is in the
+  set over which convexity holds.
+
+These issues are perhaps not insurmountable, but as a start this file supports a strict subset
+of $f$-divergences.
+
 We use our discrete, finite-alphabet `pmf`.
 
 References:

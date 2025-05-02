@@ -12,7 +12,7 @@ This project started as a formalization of Chapter 2 of *Elements of Information
 | file | main definitions | main results |
 |------|-----------------|--------------------|
 | `InformationTheory.lean` <br> This follows Chapter 2 of Cover & Thomas.| • `pmf Ω`: finite real PMF<br>• entropy, KL divergence | • basic pmf lemmas<br>• non-negativity of entropy and KL divergence |
-| `FDivergence.lean` | • F-divergence  | • non-negativity<br>• KL is an F-divergence|
+| `FDivergence.lean` | • $f$-divergence in ℝ  | • non-negativity<br>• KL is an $f$-divergence|
 
 ----
 

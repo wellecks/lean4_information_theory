@@ -218,6 +218,15 @@ theorem dominates_iff_zero_imp_zero (p q : pmf Ω) :
       exact dominates_qx0_px0 p q
    ·  exact qx0_px0_dominates p q
 
+lemma equal_support (p q : pmf Ω)[Dominates q p] :
+  (∑ x ∈ p.support, p x) = (∑ x ∈ q.support, p x) := by
+    refine Finset.sum_subset Dominates.abs_cont ?_
+    intro x hxq hxp
+    simp_all
+
+lemma qsupport_sum (p q : pmf Ω)[Dominates q p] :
+  ∑ x ∈ q.support, p x = 1 := by rw [← equal_support, p.support_sum]
+
 theorem dominated_lte (p q: pmf Ω)[Dominates q p] :
    ∑ x ∈ p.support, q x ≤ ∑ x ∈ q.support, q x := by
    refine' Finset.sum_le_sum_of_subset_of_nonneg Dominates.abs_cont _
@@ -244,7 +253,6 @@ def kld_supp (p q: pmf Ω)[Dominates q p]: ℝ :=
 lemma kld_eq_kld_supp (p q : pmf Ω)[Dominates q p] :
    kld p q = kld_supp p q := by
    rw [kld, kld_supp]
-   -- Split the equality into two cases using the set difference
    have h_filter :
       (∑ x : Ω, if hp : p x = 0 then 0 else p x * log (p x / q x)) =
         ∑ x ∈ Finset.filter (fun x : Ω ↦ p x ≠ 0) Finset.univ,
