@@ -30,6 +30,7 @@ References:
 - https://people.ece.cornell.edu/zivg/ECE_5630_Lectures6.pdf
 - https://www.ee.bgu.ac.il/~haimp/ml/lectures/lect10_f_div/Lecture_on_f_divergence_and_hypothesis_testing
 - https://en.wikipedia.org/wiki/F-divergence
+- https://www.personal.soton.ac.uk/cz1y20/Reading_Group/mlts-2023w/Tsybakov_Nonparametric_Estimation.pdf
 
 Author: Sean Welleck
 -/
@@ -40,6 +41,8 @@ import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
 import Mathlib.Analysis.Convex.Jensen
+import Mathlib.Analysis.Convex.Mul
+import Mathlib.Analysis.Convex.SpecificFunctions.Pow
 import Mathlib.Algebra.Order.Field.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
@@ -50,7 +53,7 @@ namespace InformationTheory
 
 noncomputable section
 
-open Classical BigOperators Real
+open Classical BigOperators Real Set
 
 variable {Ω : Type*}[Fintype Ω]
 
@@ -156,3 +159,58 @@ theorem tvd_nonneg (p q : pmf Ω) [Dominates q p] :
   0 ≤ tvd p q := by
   rw [← tvd_is_fdivergence]
   exact fdiv_nonneg tvF p q
+
+/- Squared Hellinger distance-/
+def hellingerSqF : ℝ → ℝ := fun x ↦
+  (1/2) * (Real.sqrt x - 1)^2
+
+instance : FDivFunction hellingerSqF where
+  one := by simp [hellingerSqF]
+  convex := by
+    unfold hellingerSqF
+    apply ConvexOn.smul (by norm_num)
+
+    -- We will expand the function and show convexity of each part
+    let f x := (Real.sqrt x - 1) ^ 2
+    let h x := x - 2 * Real.sqrt x + 1
+
+    -- Prove that f and h are equal on the set Set.Ici 0
+    have h_eqon : EqOn f h (Set.Ici 0) := by
+      intro x hx
+      unfold f h
+      ring_nf
+      rw [pow_two]
+      rw [Real.mul_self_sqrt hx]
+
+    -- Switch the goal
+    have h_iff : ConvexOn ℝ (Set.Ici 0) f ↔ ConvexOn ℝ (Set.Ici 0) h := by
+      constructor
+      · intro hc
+        exact ConvexOn.congr hc h_eqon
+      · intro hc
+        exact ConvexOn.congr hc h_eqon.symm
+    rw [h_iff]
+    unfold h
+
+    -- Now prove convexity of the expanded version
+    apply ConvexOn.add
+    · apply ConvexOn.add
+      · exact convexOn_id (convex_Ici 0)
+      · apply ConcaveOn.neg
+        apply ConcaveOn.smul (by norm_num)
+        exact strictConcaveOn_sqrt.concaveOn
+    exact convexOn_const 1 (convex_Ici 0)
+
+def hellingerSq (p q: pmf Ω)[Dominates q p]: ℝ :=
+   ∑ x, (1/2)*(√(p x) - √(q x))^2
+
+/- Squared hellinger distance is a f-divergence. -/
+theorem hellingerSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
+  fdiv hellingerSqF p q = hellingerSq p q := by
+  unfold fdiv hellingerSqF hellingerSq
+  apply Finset.sum_congr rfl
+  intro x hx
+  field_simp
+  by_cases hq : q x = 0
+  · simp_all [dominates_qx0_px0 p q x hq]
+  · sorry -- TODO
