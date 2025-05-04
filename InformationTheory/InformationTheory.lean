@@ -51,6 +51,13 @@ instance pmfCoe : CoeFun (pmf Ω) (fun _ => Ω → ℝ) where
 
 theorem hasSum_coe_one (p : pmf Ω) : HasSum p 1 := p.sum_one
 
+protected theorem ext {p q : pmf Ω} (h : ∀ x, p x = q x) : p = q := by
+   cases p
+   cases q
+   simp at h
+   congr
+   exact funext h
+
 -- Probability of any outcome is at most one.
 theorem coe_le_one (p : pmf Ω) (x : Ω) : p x ≤ 1 := by
   refine' hasSum_le _ (hasSum_ite_eq x (p x)) (hasSum_coe_one p)

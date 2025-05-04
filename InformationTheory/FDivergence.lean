@@ -61,7 +61,7 @@ class FDivFunction (f : ℝ → ℝ) where
   one : f 1 = 0
   convex : ConvexOn ℝ (Set.Ici 0) f
 
-def fdiv (f : ℝ → ℝ) [FDivFunction f] (p q : pmf Ω) : ℝ :=
+def fdiv (f : ℝ → ℝ) [FDivFunction f] (p q : pmf Ω) [Dominates q p]: ℝ :=
   ∑ x, q x * f (p x / q x)
 
 lemma jensens_invocation
@@ -159,6 +159,45 @@ theorem tvd_nonneg (p q : pmf Ω) [Dominates q p] :
   0 ≤ tvd p q := by
   rw [← tvd_is_fdivergence]
   exact fdiv_nonneg tvF p q
+
+@[simp]
+theorem tvd_self (p : pmf Ω)[Dominates p p] : 0 = tvd p p := by
+  unfold tvd; field_simp
+
+theorem tvd_comm (p q : pmf Ω)[Dominates q p][Dominates p q] : tvd p q = tvd q p := by
+  unfold tvd
+  apply Finset.sum_congr rfl
+  intro x hx
+  rw [abs_sub_comm (p x) (q x)]
+
+theorem tvd_triangle (p q r : pmf Ω) [Dominates q p][Dominates r q][Dominates r p] :
+  tvd p r ≤ tvd p q + tvd q r := by
+  unfold tvd
+  repeat (ring_nf; rw [← Finset.sum_mul])
+  field_simp
+  gcongr
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_le_sum
+  intro x hx
+  apply abs_sub_le
+
+theorem tvd_zero_iff_eq (p q : pmf Ω)[Dominates q p] : tvd p q = 0 ↔ p = q := by
+  constructor
+  · intro h
+    unfold tvd at h
+    ring_nf at h
+    rw [Finset.sum_eq_zero_iff_of_nonneg] at h
+    simp_all
+    apply InformationTheory.ext
+    intro x
+    specialize h x
+    linarith
+    simp
+  · intro h
+    unfold tvd
+    rw [h]
+    simp
+
 
 /- Squared Hellinger distance-/
 def hellingerSqF : ℝ → ℝ := fun x ↦
