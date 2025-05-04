@@ -11,8 +11,8 @@ This project started as a formalization of Chapter 2 of *Elements of Information
 
 | file | main definitions | main results |
 |------|-----------------|--------------------|
-| `InformationTheory.lean` <br> This follows Chapter 2 of Cover & Thomas.| • `pmf Ω`: finite real PMF<br>• entropy, KL divergence | • basic pmf lemmas<br>• non-negativity of entropy and KL divergence |
-| `FDivergence.lean` | • $f$-divergence in ℝ  | • non-negativity<br>• KL, total variation as $f$-divergences|
+| `InformationTheory.lean` <br> This follows Chapter 2 of Cover & Thomas.| • `pmf Ω`: finite real PMF<br>• Entropy, KL divergence | • Basic pmf lemmas<br>• Non-negativity of entropy and KL divergence |
+| `FDivergence.lean` | • $f$-divergence in ℝ<br> • Total variation distance <br> • Squared Hellinger distance| • Non-negativity<br>• KL, total variation, squared Hellinger are $f$-divergences|
 
 ----
 
