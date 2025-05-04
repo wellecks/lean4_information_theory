@@ -162,7 +162,7 @@ theorem tvd_nonneg (p q : pmf Ω) [Dominates q p] :
 
 /- Squared Hellinger distance-/
 def hellingerSqF : ℝ → ℝ := fun x ↦
-  (1/2) * (Real.sqrt x - 1)^2
+  (1/2) * (√x - 1)^2
 
 instance : FDivFunction hellingerSqF where
   one := by simp [hellingerSqF]
@@ -213,4 +213,5 @@ theorem hellingerSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
   field_simp
   by_cases hq : q x = 0
   · simp_all [dominates_qx0_px0 p q x hq]
-  · sorry -- TODO
+  · have hq_pos : 0 < q x := px_pos q x hq
+    field_simp
