@@ -254,8 +254,7 @@ theorem dominated_supp_gt_0 (p q: pmf Ω)[Dominates q p] :
 
 -- D2.26 KL divergence
 def kld (p q: pmf Ω)[Dominates q p]: ℝ :=
-   ∑ x, if p x = 0 then 0
-        else (p x)*(log (p x / q x))
+   ∑ x, (p x)*(log (p x / q x))
 
 def kld_supp (p q: pmf Ω)[Dominates q p]: ℝ :=
    ∑ x ∈ p.support, (p x)*(log (p x / q x))
@@ -264,11 +263,16 @@ lemma kld_eq_kld_supp (p q : pmf Ω)[Dominates q p] :
    kld p q = kld_supp p q := by
    rw [kld, kld_supp]
    have h_filter :
-      (∑ x : Ω, if hp : p x = 0 then 0 else p x * log (p x / q x)) =
+      (∑ x : Ω, p x * log (p x / q x)) =
         ∑ x ∈ Finset.filter (fun x : Ω ↦ p x ≠ 0) Finset.univ,
             p x * log (p x / q x) := by
       simp [Finset.sum_filter, mem_support_iff]
-   simpa [h_filter, pmf.support]
+      apply Finset.sum_congr rfl
+      intro x hx
+      split_ifs with h
+      · rw [h, zero_mul]
+      · rfl
+   simp [h_filter, pmf.support]
 
 -- 2.6: Jensen's Inequality And Its Consequences
 /- Thm. 2.6.2 (Jensen's Inequality.)
