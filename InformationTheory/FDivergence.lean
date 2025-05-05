@@ -121,6 +121,10 @@ theorem kldiv_nonneg (p q : pmf Ω) [Dominates q p] :
   rw [← kldiv_is_fdivergence]
   exact fdiv_nonneg kldivF p q
 
+theorem kldiv_self (p : pmf Ω) [Dominates p p] :
+  0 = kld p p := by
+  unfold kld; simp
+
 /- Total variation distance. -/
 def tvF : ℝ → ℝ := fun x ↦
   (1 / 2) * |x - 1|
