@@ -160,7 +160,6 @@ theorem tvd_nonneg (p q : pmf Ω) [Dominates q p] :
   rw [← tvd_is_fdivergence]
   exact fdiv_nonneg tvF p q
 
-@[simp]
 theorem tvd_self (p : pmf Ω)[Dominates p p] : 0 = tvd p p := by
   unfold tvd; field_simp
 
@@ -187,12 +186,12 @@ theorem tvd_zero_iff_eq (p q : pmf Ω)[Dominates q p] : tvd p q = 0 ↔ p = q :=
     unfold tvd at h
     ring_nf at h
     rw [Finset.sum_eq_zero_iff_of_nonneg] at h
-    simp_all
-    apply InformationTheory.ext
-    intro x
-    specialize h x
-    linarith
-    simp
+    · simp_all
+      apply InformationTheory.ext
+      intro x
+      specialize h x
+      linarith
+    · simp
   · intro h
     unfold tvd
     rw [h]
@@ -254,3 +253,35 @@ theorem hellingerSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
   · simp_all [dominates_qx0_px0 p q x hq]
   · have hq_pos : 0 < q x := px_pos q x hq
     field_simp
+
+theorem hellingerSq_self (p : pmf Ω)[Dominates p p] : 0 = hellingerSq p p := by
+  unfold hellingerSq; field_simp
+
+theorem hellingerSq_comm (p q : pmf Ω)[Dominates q p][Dominates p q] :
+  hellingerSq p q = hellingerSq q p := by
+  unfold hellingerSq
+  apply Finset.sum_congr rfl
+  intro x hx
+  field_simp
+  rw [sub_sq_comm]
+
+theorem hellingerSq_zero_iff_eq (p q : pmf Ω)[Dominates q p]
+  : hellingerSq p q = 0 ↔ p = q := by
+  constructor
+  · intro h
+    unfold hellingerSq at h
+    rw [Finset.sum_eq_zero_iff_of_nonneg] at h
+    · simp_all
+      apply InformationTheory.ext
+      intro x
+      specialize h x
+      rw [← Real.sqrt_inj, ← sub_eq_zero]
+      exact h
+      · exact p.non_neg x
+      · exact q.non_neg x
+    · intro x hx
+      simp [mul_nonneg, pow_two_nonneg]
+  · intro h
+    unfold hellingerSq
+    rw [h]
+    simp
