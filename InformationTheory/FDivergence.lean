@@ -228,6 +228,34 @@ theorem tvd_zero_iff_eq (p q : pmf Ω)[Dominates q p] : tvd p q = 0 ↔ p = q :=
     rw [h]
     simp
 
+-- Discrete version of Lemma 2.1 in Tsybakov
+theorem scheffes_theorem (p q : pmf Ω)[Dominates q p] :
+  tvd p q = 1 - ∑ x, min (p x) (q x) := by
+  unfold tvd
+  rw [← Finset.mul_sum]
+  have l₁ (x y : ℝ): min x y = (x + y - |x - y|) / 2 := by
+    rcases le_total x y with h_x_le_y | h_y_le_x
+    · rw [min_eq_left h_x_le_y]
+      rw [abs_of_nonpos (sub_nonpos.mpr h_x_le_y)]
+      ring
+    · rw [min_eq_right h_y_le_x]
+      rw [abs_eq_self.mpr (sub_nonneg.mpr h_y_le_x)]
+      ring
+  have l₂ (x y : ℝ) : |x - y| = x + y - 2 * min x y := by
+    linarith [l₁ x y]
+  have : ∑ x, |p x - q x| = ∑ x, (p x + q x - 2 * min (p x) (q x)) := by
+    apply Finset.sum_congr rfl
+    intro x _
+    rw [l₂]
+  rw [this]
+  rw [Finset.sum_sub_distrib]
+  rw [Finset.sum_add_distrib]
+  rw [p.sum_one']
+  rw [q.sum_one']
+  norm_num
+  rw [← Finset.mul_sum (f := fun x => p.f x ⊓ q.f x)]
+  ring
+
 
 /- Squared Hellinger distance-/
 def hellingerSqF : ℝ → ℝ := fun x ↦
