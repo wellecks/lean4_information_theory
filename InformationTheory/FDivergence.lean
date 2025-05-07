@@ -125,6 +125,7 @@ theorem kldiv_self (p : pmf Ω) [Dominates p p] :
   0 = kld p p := by
   unfold kld; simp
 
+
 /- Total variation distance. -/
 def tvF : ℝ → ℝ := fun x ↦
   (1 / 2) * |x - 1|
@@ -163,6 +164,32 @@ theorem tvd_nonneg (p q : pmf Ω) [Dominates q p] :
   0 ≤ tvd p q := by
   rw [← tvd_is_fdivergence]
   exact fdiv_nonneg tvF p q
+
+theorem tvd_leq_one (p q : pmf Ω) [Dominates q p] : tvd p q ≤ 1 := by
+  unfold tvd
+  calc ∑ x, 1 / 2 * |p.f x - q.f x|
+        = ∑ x, 1 / 2 * |- q x + p x| := by
+          apply Finset.sum_congr rfl
+          intro x hx
+          simp [neg_add_eq_sub]
+      _ ≤ ∑ x, (1/2*|- q x| + 1/2*|p x|) := by
+          apply Finset.sum_le_sum
+          intro x hx
+          rw [← mul_add]
+          apply mul_le_mul_of_nonneg_left
+          apply abs_add
+          norm_num
+      _ ≤ 1 := by
+          calc ∑ x, (1/2*|- q x| + 1/2*|p x|)
+              = ∑ x, 1/2*|- q x| + ∑ x, 1/2*|p x| := by
+                  apply Finset.sum_add_distrib
+            _ = 1/2 * ∑ x, |- q x| + 1/2 * ∑ x, |p x| := by
+                  rw [← Finset.mul_sum, ← Finset.mul_sum]
+            _ = 1/2 * 1 + 1/2 * 1 := by
+                  simp [abs_of_nonneg (q.non_neg _),
+                        abs_of_nonneg (p.non_neg _), pmf.sum_one']
+            _ = 1 := by norm_num
+          norm_num
 
 theorem tvd_self (p : pmf Ω)[Dominates p p] : 0 = tvd p p := by
   unfold tvd; field_simp

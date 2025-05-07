@@ -117,6 +117,9 @@ theorem support_nonempty (p : pmf Ω) : p.support.Nonempty := by
    have h' : ∑ x ∈ p.support, p x = ∑ x ∈ (∅: Finset Ω), p x := by rw [h]
    simp [Finset.sum_empty] at h'
 
+lemma abs_px_eq_px (p : pmf Ω) (x : Ω) : p x = |p x| := by
+   rw [abs_of_nonneg (p.non_neg x)]
+
 /--Turn a mathlib `PMF` into our real-valued `pmf` (finite alphabet). -/
 def PMF.to_pmf {Ω : Type*} [Fintype Ω] (p : PMF Ω) : pmf Ω where
   f        := fun x ↦ (p x).toReal
