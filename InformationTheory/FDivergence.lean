@@ -253,7 +253,7 @@ theorem scheffes_theorem (p q : pmf Ω)[Dominates q p] :
   rw [p.sum_one']
   rw [q.sum_one']
   norm_num
-  rw [← Finset.mul_sum (f := fun x => p.f x ⊓ q.f x)]
+  rw [← Finset.mul_sum]
   ring
 
 
@@ -344,3 +344,38 @@ theorem hellingerSq_zero_iff_eq (p q : pmf Ω)[Dominates q p]
     unfold hellingerSq
     rw [h]
     simp
+
+/- Neyman χ² divergence-/
+def chiSqF : ℝ → ℝ := fun x ↦ (x - 1)^2
+
+instance : FDivFunction chiSqF where
+  one := by simp [chiSqF]
+  convex := by
+    unfold chiSqF
+    let f x : ℝ := (x - 1) ^ 2
+    let h x : ℝ := x^2 - 2 * x + 1
+
+    have h_eqon : EqOn f h (Set.Ici 0) := by
+      intro x hx
+      unfold f h
+      ring_nf
+
+    have h_iff : ConvexOn ℝ (Set.Ici (0: ℝ)) f ↔ ConvexOn ℝ (Set.Ici (0: ℝ)) h := by
+      constructor
+      · intro hc
+        exact ConvexOn.congr hc h_eqon
+      · intro hc
+        exact ConvexOn.congr hc h_eqon.symm
+    rw [h_iff]
+    unfold h
+
+    apply ConvexOn.add
+    apply ConvexOn.add
+    apply ConvexOn.pow
+    · exact convexOn_id (convex_Ici 0)
+    · intro x hx
+      simp_all
+    apply ConcaveOn.neg
+    apply ConcaveOn.smul (by norm_num)
+    apply concaveOn_id (convex_Ici 0)
+    exact convexOn_const 1 (convex_Ici 0)
