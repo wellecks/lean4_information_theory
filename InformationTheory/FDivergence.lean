@@ -376,7 +376,7 @@ instance : FDivFunction chiSqF where
 def chiSq (p q: pmf Ω)[Dominates q p]: ℝ :=
    ∑ x, (p x - q x)^2 / q x
 
-/- Squared hellinger distance is a f-divergence. -/
+/- χ² divergence is a f-divergence. -/
 theorem chiSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
   fdiv chiSqF p q = chiSq p q := by
   unfold fdiv chiSqF chiSq
