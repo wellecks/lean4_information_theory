@@ -386,3 +386,29 @@ theorem chiSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
   · simp_all
   · field_simp
     ring
+
+theorem chiSq_self (p : pmf Ω)[Dominates p p] : 0 = chiSq p p := by
+  unfold chiSq; field_simp
+
+theorem chiSq_zero_iff_eq (p q : pmf Ω)[Dominates q p]
+  : chiSq p q = 0 ↔ p = q := by
+  constructor
+  · intro h
+    unfold chiSq at h
+    rw [Finset.sum_eq_zero_iff_of_nonneg] at h
+    · simp_all
+      apply InformationTheory.ext
+      intro x
+      specialize h x
+      rw [← sub_eq_zero]
+      rcases h with h₁ | h₂
+      · assumption
+      · simp_all [dominates_qx0_px0 p q x h₂]
+    · intro x hx
+      by_cases hqx: q x = 0
+      · simp_all
+      · exact div_nonneg (pow_two_nonneg _) (q.non_neg x)
+  · intro h
+    unfold chiSq
+    rw [h]
+    simp
