@@ -266,11 +266,9 @@ instance : FDivFunction hellingerSqF where
   convex := by
     unfold hellingerSqF
     apply ConvexOn.smul (by norm_num)
-
     -- We will expand the function and show convexity of each part
     let f x := (Real.sqrt x - 1) ^ 2
     let h x := x - 2 * Real.sqrt x + 1
-
     -- Prove that f and h are equal on the set Set.Ici 0
     have h_eqon : EqOn f h (Set.Ici 0) := by
       intro x hx
@@ -278,7 +276,6 @@ instance : FDivFunction hellingerSqF where
       ring_nf
       rw [pow_two]
       rw [Real.mul_self_sqrt hx]
-
     -- Switch the goal
     have h_iff : ConvexOn ℝ (Set.Ici 0) f ↔ ConvexOn ℝ (Set.Ici 0) h := by
       constructor
@@ -288,7 +285,6 @@ instance : FDivFunction hellingerSqF where
         exact ConvexOn.congr hc h_eqon.symm
     rw [h_iff]
     unfold h
-
     -- Now prove convexity of the expanded version
     apply ConvexOn.add
     · apply ConvexOn.add
@@ -354,12 +350,10 @@ instance : FDivFunction chiSqF where
     unfold chiSqF
     let f x : ℝ := (x - 1) ^ 2
     let h x : ℝ := x^2 - 2 * x + 1
-
     have h_eqon : EqOn f h (Set.Ici 0) := by
       intro x hx
       unfold f h
       ring_nf
-
     have h_iff : ConvexOn ℝ (Set.Ici (0: ℝ)) f ↔ ConvexOn ℝ (Set.Ici (0: ℝ)) h := by
       constructor
       · intro hc
@@ -368,14 +362,27 @@ instance : FDivFunction chiSqF where
         exact ConvexOn.congr hc h_eqon.symm
     rw [h_iff]
     unfold h
+    apply ConvexOn.add
+    · apply ConvexOn.add
+      apply ConvexOn.pow
+      · exact convexOn_id (convex_Ici 0)
+      · intro x hx
+        simp_all
+      apply ConcaveOn.neg
+      apply ConcaveOn.smul (by norm_num)
+      apply concaveOn_id (convex_Ici 0)
+    · exact convexOn_const 1 (convex_Ici 0)
 
-    apply ConvexOn.add
-    apply ConvexOn.add
-    apply ConvexOn.pow
-    · exact convexOn_id (convex_Ici 0)
-    · intro x hx
-      simp_all
-    apply ConcaveOn.neg
-    apply ConcaveOn.smul (by norm_num)
-    apply concaveOn_id (convex_Ici 0)
-    exact convexOn_const 1 (convex_Ici 0)
+def chiSq (p q: pmf Ω)[Dominates q p]: ℝ :=
+   ∑ x, (p x - q x)^2 / q x
+
+/- Squared hellinger distance is a f-divergence. -/
+theorem chiSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
+  fdiv chiSqF p q = chiSq p q := by
+  unfold fdiv chiSqF chiSq
+  apply Finset.sum_congr rfl
+  intro x hx
+  by_cases hq : q x = 0
+  · simp_all
+  · field_simp
+    ring
