@@ -412,3 +412,55 @@ theorem chiSq_zero_iff_eq (p q : pmf Ω)[Dominates q p]
     unfold chiSq
     rw [h]
     simp
+
+/- Le Cam's inequality-/
+lemma max_min_eq_two (p q : pmf Ω) [Dominates q p] :
+  ∑ x, max (p x) (q x) + ∑ x, min (p x) (q x) = 2 := by
+  rw [← Finset.sum_add_distrib]
+  conv =>
+    left
+    right
+    ext x
+    rw [max_add_min]
+  rw [Finset.sum_add_distrib]
+  norm_num [pmf.sum_one']
+
+lemma max_eq_two_min (p q : pmf Ω) [Dominates q p] :
+  ∑ x, max (p x) (q x) = 2 - ∑ x, min (p x) (q x) := by
+  rw [← max_min_eq_two p q]
+  field_simp
+
+lemma sum_sqrt_mul_sq_le_sum_mul_sum {Ω : Type*} [Fintype Ω]
+    (a b : Ω → ℝ) (ha_nonneg : ∀ x, 0 ≤ a x) (hb_nonneg : ∀ x, 0 ≤ b x) :
+    (∑ x, √(a x * b x))^2 ≤ (∑ x, a x) * (∑ x, b x) := by
+  -- Apply Cauchy-Schwarz: (∑ uᵢvᵢ)² ≤ (∑ uᵢ²) (∑ vᵢ²)
+  let u := fun x => Real.sqrt (a x)
+  let v := fun x => Real.sqrt (b x)
+  suffices (∑ x, u x * v x) ^ 2 ≤ (∑ x, u x ^ 2) * (∑ x, v x ^ 2) by
+    simp_all [u, v]
+  exact Finset.sum_mul_sq_le_sq_mul_sq Finset.univ u v
+
+theorem lecam_inequality (p q : pmf Ω) [Dominates q p] :
+  (1/2)*(∑ x, √(p x * q x))^2 ≤ ∑ x, min (p x) (q x) := by
+  calc (1/2)*(∑ x, √(p x * q x))^2
+        = (1/2)*(∑ x, √(max (p x) (q x) * min (p x ) (q x)))^2 := by
+          congr 3; funext x
+          rw [max_mul_min]
+      _ ≤ (1/2)*((∑ x, max (p x) (q x)) * (∑ x, min (p x) (q x))) := by
+          apply mul_le_mul_of_nonneg_left
+          · apply sum_sqrt_mul_sq_le_sum_mul_sum (fun x => max (p x) (q x)) (fun x => min (p x) (q x))
+            · intro x
+              exact le_max_of_le_left (p.non_neg x)
+            · intro x
+              exact le_min (p.non_neg x) (q.non_neg x)
+          · simp
+      _ = (1/2)*((2 - ∑ x, min (p x) (q x))*(∑ x, (min (p x) (q x)))) := by
+          congr 1
+          conv =>
+            right
+            rw [← max_eq_two_min]
+      _ ≤ ∑ x, min (p x) (q x) := by
+        let S := ∑ x, min (p x) (q x)
+        suffices (1/2) * ((2 - S)*S) ≤ S by assumption
+        rw [sub_mul]
+        nlinarith
