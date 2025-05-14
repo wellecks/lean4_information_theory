@@ -508,3 +508,13 @@ theorem lecam_inequality (p q : pmf Ω) [Dominates q p] :
         suffices (1/2) * ((2 - S)*S) ≤ S by assumption
         rw [sub_mul]
         nlinarith
+
+theorem lecam_connector_lemma (p q : pmf Ω) [Dominates q p] :
+  (1/2)*(∑ x, √(p x * q x))^2 = (1/2)*(1 - (2 * hellingerSq p q)/2)^2 := by
+    rw [hellingerSq_multiplicative_form p q]
+    ring
+
+theorem lecam_hellingerSq (p q : pmf Ω) [Dominates q p] :
+  (1/2)*(1 - (2 * hellingerSq p q)/2)^2 ≤ ∑ x, min (p x) (q x) := by
+  rw [← lecam_connector_lemma p q]
+  exact lecam_inequality p q
