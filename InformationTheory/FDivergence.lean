@@ -44,6 +44,7 @@ import Mathlib.Analysis.Convex.Jensen
 import Mathlib.Analysis.Convex.Mul
 import Mathlib.Analysis.Convex.SpecificFunctions.Pow
 import Mathlib.Algebra.Order.Field.Basic
+import Mathlib.Algebra.BigOperators.Field
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
@@ -294,8 +295,16 @@ instance : FDivFunction hellingerSqF where
         exact strictConcaveOn_sqrt.concaveOn
     exact convexOn_const 1 (convex_Ici 0)
 
+/- We use the definition from Wikipedia:
+    https://en.wikipedia.org/wiki/Hellinger_distance
+  Note that Tsybakov (we prove some results from this
+  text below) defines Squared Hellinger without the 1/2.
+-/
 def hellingerSq (p q: pmf Ω)[Dominates q p]: ℝ :=
    ∑ x, (1/2)*(√(p x) - √(q x))^2
+
+def tsybakov_hellingerSq (p q: pmf Ω)[Dominates q p]: ℝ :=
+  2 * hellingerSq p q
 
 /- Squared hellinger distance is a f-divergence. -/
 theorem hellingerSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
@@ -340,6 +349,41 @@ theorem hellingerSq_zero_iff_eq (p q : pmf Ω)[Dominates q p]
     unfold hellingerSq
     rw [h]
     simp
+
+-- Property (iii) in Tsybakov (Section 2.4)
+lemma tsybakov_hellingerSq_multiplicative_form (p q : pmf Ω)[Dominates q p]
+  : tsybakov_hellingerSq p q = 2*(1 - ∑ x, √((p x)*(q x))) := by
+  unfold tsybakov_hellingerSq; unfold hellingerSq
+  field_simp
+  have h₁ : ∑ x, (√(p.f x) - √(q.f x)) ^ 2 = ∑ x, (p x - 2*√(p x * q x)+ q x) := by
+    apply Finset.sum_congr rfl
+    intro x hx
+    rw [sub_sq, sq_sqrt, sq_sqrt, sqrt_mul]
+    ring
+    · exact p.non_neg x
+    · exact q.non_neg x
+    · exact p.non_neg x
+  have h₂ : ∑ x, (p x - 2*√(p x * q x) + q x) = 2 - ∑ x, 2*√(p x * q x) := by
+    simp [Finset.sum_add_distrib, p.sum_one', q.sum_one']
+    ring
+  suffices ∑ x, (√(p.f x) - √(q.f x)) ^ 2 = 2 - ∑ x, 2*√(p.f x * q.f x) by
+    rw [← Finset.sum_div, this]
+    field_simp
+    rw [sub_mul]
+    rw [Finset.sum_mul]
+    field_simp
+    apply Finset.sum_congr rfl
+    intro x hx
+    ring
+  simp [h₁, h₂]
+
+theorem hellingerSq_multiplicative_form (p q : pmf Ω)[Dominates q p]
+  : hellingerSq p q = (1 - ∑ x, √((p x)*(q x))) := by
+  have : 2 * hellingerSq p q = 2*(1 - ∑ x, √((p x)*(q x))) := by
+    rw [← tsybakov_hellingerSq]
+    exact tsybakov_hellingerSq_multiplicative_form p q
+  linarith
+
 
 /- Neyman χ² divergence-/
 def chiSqF : ℝ → ℝ := fun x ↦ (x - 1)^2
