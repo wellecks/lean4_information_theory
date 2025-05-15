@@ -457,7 +457,10 @@ theorem chiSq_zero_iff_eq (p q : pmf Ω)[Dominates q p]
     rw [h]
     simp
 
-/- Le Cam's inequality-/
+/- Le Cam's inequality
+
+Lemma 2.3, Equation 2.16 in Tsybekov.
+-/
 lemma max_min_eq_two (p q : pmf Ω) [Dominates q p] :
   ∑ x, max (p x) (q x) + ∑ x, min (p x) (q x) = 2 := by
   rw [← Finset.sum_add_distrib]
@@ -518,3 +521,27 @@ theorem lecam_hellingerSq (p q : pmf Ω) [Dominates q p] :
   (1/2)*(1 - (2 * hellingerSq p q)/2)^2 ≤ ∑ x, min (p x) (q x) := by
   rw [← lecam_connector_lemma p q]
   exact lecam_inequality p q
+
+
+/- Le Cam's inequality: H²(p, q) ≤ TV(p, q)
+Lemma 2.3, Equation 2.17 in Tsybekov.
+-/
+theorem lecam_hellingerSq_le_tvd (p q : pmf Ω) [Dominates q p] :
+  hellingerSq p q ≤ tvd p q := by
+  rw [hellingerSq_multiplicative_form, scheffes_theorem]
+  apply (sub_le_sub (by simp))
+  apply Finset.sum_le_sum
+  intro x hx
+  have h: (min (p x) (q x))^2 ≤ (p x)*(q x) := by
+    rcases le_total (p x) (q x) with hp | hq
+    · rw [min_eq_left hp]
+      nlinarith [hp, p.non_neg x]
+    · rw [min_eq_right hq]
+      nlinarith [hq, q.non_neg x]
+  calc min (p x) (q x)
+    _ = √((min (p x) (q x))*(min (p x) (q x))) := by
+      ring_nf
+      rw [Real.sqrt_sq (le_min (p.non_neg x) (q.non_neg x))]
+    _ ≤ √((p x)*(q x)) := by
+      ring_nf
+      exact sqrt_le_sqrt h
