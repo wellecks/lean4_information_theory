@@ -559,8 +559,8 @@ theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
         intro x hx
         rw [sq_sqrt]
         by_cases hq: (q x = 0)
-        simp_all
-        exact div_nonneg (p.non_neg x) (q.non_neg x)
+        · simp_all
+        · exact div_nonneg (p.non_neg x) (q.non_neg x)
     _ = 2 * (∑ x ∈ p.support, (p x)*(log (√(p x)/√(q x)))) := by
         rw [Finset.mul_sum]
         apply Finset.sum_congr rfl
@@ -573,21 +573,14 @@ theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
         apply Finset.sum_congr rfl
         intro x hx
         field_simp
+        simp at hx
+        have hq := dominates_pxne0_qxne0 p q x hx
         rw [Real.log_div, Real.log_div]
         ring
-        simp at hx
-        · have := dominates_pxne0_qxne0 p q x hx
-          rwa [sqrt_ne_zero (q.non_neg x)]
-        · simp at hx
-          rw [sqrt_ne_zero (p.non_neg x)]
-          exact hx
-        · simp at hx
-          rw [sqrt_ne_zero (p.non_neg x)]
-          exact hx
-        · simp at hx
-          have := dominates_pxne0_qxne0 p q x hx
-          rw [sqrt_ne_zero (q.non_neg x)]
-          exact this
+        · rwa [sqrt_ne_zero (q.non_neg x)]
+        · rwa [sqrt_ne_zero (p.non_neg x)]
+        · rwa [sqrt_ne_zero (p.non_neg x)]
+        · rwa [sqrt_ne_zero (q.non_neg x)]
     _ ≥ -2*(∑ x ∈ p.support, (p x)*(√(q x / p x) - 1)) := by
         rw [Finset.mul_sum, Finset.mul_sum]
         apply Finset.sum_le_sum
@@ -624,5 +617,5 @@ theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
       rw [Finset.sum_subset p.support.subset_univ]
       intro x hx hp
       rw [sqrt_eq_zero]
-      simp_all
-      simp_all
+      · simp_all
+      · simp_all
