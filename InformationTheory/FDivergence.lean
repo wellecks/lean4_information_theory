@@ -47,6 +47,7 @@ import Mathlib.Algebra.Order.Field.Basic
 import Mathlib.Algebra.BigOperators.Field
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
+import Mathlib.InformationTheory.KullbackLeibler.KLFun
 
 open InformationTheory
 
@@ -619,3 +620,56 @@ theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
       rw [sqrt_eq_zero]
       · simp_all
       · simp_all
+
+/- Pinsker's Inequality
+
+Following the proof of Lemma 2.5 in Tsybakov. -/
+lemma pinsker_lemma_2_23 (x: ℝ) (hx : 0 ≤ x) :
+  (x - 1)^2 ≤ (4/3 + 2/3*x) * klFun x := by sorry
+
+lemma tvd_supp (p q : pmf Ω)[Dominates q p] :
+  tvd p q = (1/2) * ∑ x ∈ q.support, |p x - q x| := by
+  unfold tvd
+  rw [Finset.sum_subset q.support.subset_univ]
+  · rw [Finset.mul_sum]
+  · intro x hx hq
+    simp at hq
+    simp_all [dominates_qx0_px0 p q x hq]
+
+theorem pinsker_tvd_kl (p q : pmf Ω)[Dominates q p] :
+  tvd p q ≤ √(kld p q / 2) := by
+  let Sq := q.support
+  calc tvd p q
+    _ = (1/2) * ∑ x ∈ Sq, |p x - q x| := by rw [tvd_supp]
+    _ = (1/2) * ∑ x ∈ Sq, (|(p x)/(q x) - 1| * (q x)) := by
+      apply congr_arg
+      apply Finset.sum_congr rfl
+      intro x hx
+      have hq_pos : 0 < q x := (mem_support_pos q x).mp hx
+      field_simp [abs_div, abs_of_pos hq_pos]
+    _ = (1/2) * ∑ x ∈ Sq, √(((p x)/(q x) - 1)^2) * (q x) := by
+      apply congr_arg
+      apply Finset.sum_congr rfl
+      intro x hx
+      rw [Real.sqrt_sq_eq_abs]
+    _ ≤ (1/2) * ∑ x ∈ Sq, √((4/3 + (2/3 * (p x / q x))) * klFun (p x / q x)) * (q x) := by
+      rw [Finset.mul_sum, Finset.mul_sum]
+      apply Finset.sum_le_sum
+      intro x hx
+      apply mul_le_mul (by linarith)
+      apply mul_le_mul
+      apply Real.sqrt_le_sqrt
+      apply pinsker_lemma_2_23
+      exact div_nonneg (p.non_neg x) (q.non_neg x)
+      · linarith
+      · exact q.non_neg x
+      · simp [klFun_nonneg]
+      · apply mul_nonneg
+        apply Real.sqrt_nonneg
+        exact q.non_neg x
+      · linarith
+    _ ≤ (1/2) * ∑ x ∈ Sq, √((4/3 + (2 * p x)/ (3 * q x)) * klFun (p x / q x)) * (q x) := sorry
+    _ ≤ (1/2) * √(∑ x ∈ Sq, (4*q x/3 + 2*p x/3))*√(∑ x ∈ Sq, q x * klFun (p x / q x)) := sorry
+    _ ≤ (1/2) * √(∑ x,      (4*q x/3 + 2*p x/3))*√(∑ x ∈ Sq, q x * klFun (p x / q x)) := sorry
+    _ = √((1/2) * ∑ x, p x * log (p x / q x)) := sorry
+    _ = √(kld p q / 2) := sorry
