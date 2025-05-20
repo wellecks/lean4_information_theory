@@ -545,3 +545,84 @@ theorem lecam_hellingerSq_le_tvd (p q : pmf Ω) [Dominates q p] :
     _ ≤ √((p x)*(q x)) := by
       ring_nf
       exact sqrt_le_sqrt h
+
+/- Link between Hellinger and KL.
+Lemma 2.4 in Tsybekov. -/
+theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
+  hellingerSq p q ≤ (1/2)*kld p q := by
+  suffices 2*hellingerSq p q ≤ kld p q by linarith
+  rw [kld_eq_kld_supp p q]
+  unfold kld_supp
+  calc ∑ x ∈ p.support, p.f x * log (p.f x / q.f x)
+      = (∑ x ∈ p.support, (p x)*(log ((√((p x)/(q x)))^2))) := by
+        apply Finset.sum_congr rfl
+        intro x hx
+        rw [sq_sqrt]
+        by_cases hq: (q x = 0)
+        simp_all
+        exact div_nonneg (p.non_neg x) (q.non_neg x)
+    _ = 2 * (∑ x ∈ p.support, (p x)*(log (√(p x)/√(q x)))) := by
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro x hx
+        field_simp
+        rw [sqrt_div (p.non_neg x)]
+        ring
+    _ = -2*(∑ x ∈ p.support, (p x)*(log ((√(q x) / √(p x) - 1) + 1))) := by
+        rw [Finset.mul_sum, Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro x hx
+        field_simp
+        rw [Real.log_div, Real.log_div]
+        ring
+        simp at hx
+        · have := dominates_pxne0_qxne0 p q x hx
+          rwa [sqrt_ne_zero (q.non_neg x)]
+        · simp at hx
+          rw [sqrt_ne_zero (p.non_neg x)]
+          exact hx
+        · simp at hx
+          rw [sqrt_ne_zero (p.non_neg x)]
+          exact hx
+        · simp at hx
+          have := dominates_pxne0_qxne0 p q x hx
+          rw [sqrt_ne_zero (q.non_neg x)]
+          exact this
+    _ ≥ -2*(∑ x ∈ p.support, (p x)*(√(q x / p x) - 1)) := by
+        rw [Finset.mul_sum, Finset.mul_sum]
+        apply Finset.sum_le_sum
+        intro x hx
+        field_simp
+        simp at hx
+        rw [mul_le_mul_left]
+        rw [sqrt_div (q.non_neg x)]
+        apply Real.log_le_sub_one_of_pos
+        have hqx_pos : 0 < q.f x := px_pos q x (dominates_pxne0_qxne0 p q x hx)
+        have hpx_pos : 0 < p.f x := px_pos p x hx
+        exact div_pos (sqrt_pos.2 hqx_pos) (sqrt_pos.2 hpx_pos)
+        · exact px_pos p x hx
+    _ = -2*(∑ x ∈ p.support, √(p x * q x) - 1) := by
+        conv =>
+          left
+          right
+          right
+          ext x
+          rw [mul_sub_left_distrib]
+          rw [sqrt_div (q.non_neg x)]
+        rw [Finset.sum_sub_distrib]
+        field_simp
+        apply Finset.sum_congr rfl
+        intro x hx
+        rw [mul_comm]
+        rw [mul_div_assoc]
+        rw [div_sqrt]
+        rw [sqrt_mul (p.non_neg x)]
+        ring
+    _ = 2*(1 - ∑ x ∈ p.support, √(p x * q x)) := by ring
+    _ = 2*hellingerSq p q := by
+      rw [hellingerSq_multiplicative_form]
+      rw [Finset.sum_subset p.support.subset_univ]
+      intro x hx hp
+      rw [sqrt_eq_zero]
+      simp_all
+      simp_all
