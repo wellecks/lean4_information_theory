@@ -636,9 +636,11 @@ lemma tvd_supp (p q : pmf Ω)[Dominates q p] :
     simp at hq
     simp_all [dominates_qx0_px0 p q x hq]
 
+
 theorem pinsker_tvd_kl (p q : pmf Ω)[Dominates q p] :
   tvd p q ≤ √(kld p q / 2) := by
   let Sq := q.support
+
   calc tvd p q
     _ = (1/2) * ∑ x ∈ Sq, |p x - q x| := by rw [tvd_supp]
     _ = (1/2) * ∑ x ∈ Sq, (|(p x)/(q x) - 1| * (q x)) := by
@@ -668,8 +670,107 @@ theorem pinsker_tvd_kl (p q : pmf Ω)[Dominates q p] :
         apply Real.sqrt_nonneg
         exact q.non_neg x
       · linarith
-    _ ≤ (1/2) * ∑ x ∈ Sq, √((4/3 + (2 * p x)/ (3 * q x)) * klFun (p x / q x)) * (q x) := sorry
-    _ ≤ (1/2) * √(∑ x ∈ Sq, (4*q x/3 + 2*p x/3))*√(∑ x ∈ Sq, q x * klFun (p x / q x)) := sorry
-    _ ≤ (1/2) * √(∑ x,      (4*q x/3 + 2*p x/3))*√(∑ x ∈ Sq, q x * klFun (p x / q x)) := sorry
-    _ = √((1/2) * ∑ x, p x * log (p x / q x)) := sorry
-    _ = √(kld p q / 2) := sorry
+    _ = (1/2) * (∑ x ∈ Sq, sqrt (q x * (4/3 + 2/3*(p x / q x))) * sqrt (q x * klFun (p x / q x))) := by
+      apply congr_arg;
+      apply Finset.sum_congr rfl
+      intro x hx
+      rw [sqrt_mul (q.non_neg x), sqrt_mul (q.non_neg x)]
+      rw [mul_comm √(q.f x)]
+      rw [← mul_assoc]
+      ring_nf
+      rw [sq_sqrt (q.non_neg x)]
+      rw [mul_comm (√(4 / 3 + p.f x * (q.f x)⁻¹ * (2 / 3)))]
+      rw [mul_assoc (q.f x)]
+      rw [← sqrt_mul]
+      unfold Sq at hx
+      simp at hx
+      have : q x > 0 := by
+        exact px_pos q x hx
+      field_simp [hx, this]
+      ring_nf
+      unfold Sq at hx
+      simp at hx
+      have hq_nonneg : q x > 0 := by
+        exact px_pos q x hx
+      have hqx_nonneg : 0 ≤ q.f x := le_of_lt hq_nonneg
+      have hpx_qx_ratio_nonneg : 0 ≤ p.f x * (q.f x)⁻¹ :=
+        mul_nonneg (p.non_neg x) (inv_nonneg.mpr hqx_nonneg)
+      linarith
+    _ ≤ (1/2) * (
+        sqrt (∑ x ∈ Sq, sqrt (q x * (4/3 + 2/3*(p x/q x)))^2) *
+        sqrt (∑ x ∈ Sq, sqrt (q x * klFun (p x / q x))^2)) := by
+      let Ax_expanded x := q x * (4/3 + 2/3*(p x/q x))
+      let klFun_expanded x := q x * klFun (p x / q x)
+      let u x := sqrt (Ax_expanded x)
+      let v x := sqrt (klFun_expanded x)
+      apply mul_le_mul_of_nonneg_left
+      apply sum_mul_le_sqrt_mul_sqrt Sq u v
+      norm_num
+    _ = (1/2) * (
+        sqrt (∑ x ∈ Sq, q x * (4/3 + 2/3*(p x/q x))) *
+        sqrt (∑ x ∈ Sq, q x * klFun (p x / q x))) := by
+      congr 4
+      · ext x
+        field_simp
+        rw [sq_sqrt]
+        · by_cases hq: q x = 0
+          · simp_all
+          · have hqpos : q x > 0 := by exact px_pos q x hq
+            have hp : p x ≥ 0 := by exact p.non_neg x
+            ring_nf
+            field_simp
+            simp_all
+            linarith [hqpos, hp]
+      · ext x
+        rw [sq_sqrt]
+        by_cases hq: q x = 0
+        · simp_all
+        · exact mul_nonneg (q.non_neg x) (klFun_nonneg (div_nonneg (p.non_neg x) (q.non_neg x)))
+    _ = √((1/2) * ∑ x, p x * log (p x / q x)) := by
+      have h1 : ∑ x ∈ Sq, q x * (4/3 + 2/3*(p x/q x)) = 2 := by
+        have h : ∑ x ∈ Sq, q x * (4/3 + 2/3*(p x/q x)) = ∑ x ∈ Sq, (4/3*q x + 2/3*p x) := by
+          apply Finset.sum_congr rfl
+          intro x hx
+          rw [mul_add]
+          have hq : q x > 0 := by
+            unfold Sq at hx
+            simp at hx
+            exact px_pos q x hx
+          field_simp [hq]
+          ring
+        have h' : ∑ x ∈ Sq, (4/3*q x + 2/3*p x) = 4/3 * ∑ x ∈ Sq, q x + 2/3 * ∑ x ∈ Sq, p x := by
+          rw [Finset.sum_add_distrib, Finset.mul_sum, Finset.mul_sum]
+        rw [h, h']
+        rw [q.support_sum, qsupport_sum p q]
+        ring
+      rw [h1]
+      have h2 : ∑ x ∈ Sq, q.f x * klFun (p.f x / q.f x) = ∑ x ∈ Sq, p x * log (p x / q x) := by
+        have h : ∑ x ∈ Sq, q.f x * klFun (p.f x / q.f x) = ∑ x ∈ Sq, (p x * log (p x / q x) - p x + q x) := by
+          apply Finset.sum_congr rfl
+          intro x hx
+          unfold klFun
+          unfold Sq at hx
+          simp at hx
+          have : q x > 0 := by
+            exact px_pos q x hx
+          field_simp
+          ring
+        rw [h]
+        rw [Finset.sum_add_distrib]
+        rw [Finset.sum_sub_distrib]
+        rw [q.support_sum, qsupport_sum p q]
+        ring
+      have h3 : ∑ x ∈ Sq, (p x * log (p x / q x)) = ∑ x, (p x * log (p x / q x)) := by
+        apply Finset.sum_subset q.support.subset_univ
+        intro x hx hxq
+        simp at hxq
+        rw [dominates_qx0_px0 p q x hxq, hxq]
+        simp
+      rw [h2, h3]
+      rw [← Real.sqrt_mul (by linarith)]
+      field_simp
+      rw [mul_comm, ← mul_assoc]
+      simp
+      rw [mul_comm]
+    _ = √(kld p q / 2) := by
+      field_simp [kld]
