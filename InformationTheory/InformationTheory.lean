@@ -12,8 +12,6 @@ Current main definitions:
 
 Author: Sean Welleck
 -/
-import LLMlean
-
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 import Mathlib.Analysis.Convex.Jensen
@@ -68,7 +66,7 @@ theorem coe_le_one (p : pmf Ω) (x : Ω) : p x ≤ 1 := by
 
 -- Writes has_sum in terms of Finset.sum
 theorem pmf.sum_one' (p : pmf Ω) : ∑ x, p x = 1 := by
-   rw [← tsum_fintype]
+   rw [← tsum_fintype (L := .unconditional _)]
    exact p.sum_one.tsum_eq
 
 /-- The support of a `pmf` is the set where it is nonzero. -/
@@ -78,14 +76,14 @@ theorem mem_support_pos (p : pmf Ω) (x : Ω) : x ∈ p.support ↔ p x > 0 := b
    constructor
    ·  intro hx
       unfold pmf.support at hx
-      simp_all [Set.mem_toFinset]
+      simp_all
       rw [lt_iff_le_and_ne]
       constructor
       ·  exact p.non_neg x
       ·  simp_all [Ne.symm]
    ·  intro h
       unfold pmf.support
-      simp_all [Set.mem_toFinset]
+      simp_all
       linarith
 
 theorem px_pos (p : pmf Ω) (x : Ω) (hp : p x ≠ 0) : 0 < p x := by
@@ -94,7 +92,7 @@ theorem px_pos (p : pmf Ω) (x : Ω) (hp : p x ≠ 0) : 0 < p x := by
 @[simp]
 theorem mem_support_iff (p : pmf Ω) (x : Ω) : x ∈ p.support ↔ p x ≠ 0 := by
    unfold pmf.support
-   simp [Set.mem_toFinset]
+   simp
 
 @[simp]
 theorem pmf.support_sum (p: pmf Ω) : ∑ x ∈ p.support, p x = 1 := by
@@ -128,7 +126,9 @@ def PMF.to_pmf {Ω : Type*} [Fintype Ω] (p : PMF Ω) : pmf Ω where
    have h_has := hasSum_fintype (fun x : Ω ↦ (p x).toReal)
    have h_sum : (∑ x : Ω, (p x).toReal) = 1 := by
       rw [← ENNReal.toReal_sum]
-      ·  have : ∑ a, p a = 1 := by simp [← tsum_fintype, p.tsum_coe]
+      ·  have : ∑ a, p a = 1 := by
+            rw [← tsum_fintype (L := .unconditional _)]
+            exact p.tsum_coe
          rw [this]
          exact ENNReal.toReal_one
       ·  intro x hx
@@ -139,7 +139,7 @@ def PMF.to_pmf {Ω : Type*} [Fintype Ω] (p : PMF Ω) : pmf Ω where
 def pmf.toPMF (p : pmf Ω) : PMF Ω := by
    let f := fun x ↦ ENNReal.ofReal (p x)
    refine PMF.ofFinset f p.support ?sum_one ?outside_zero
-   · simp [pmf.support_sum, f, ENNReal.ofReal_toReal]
+   · simp [f]
      rw [← ENNReal.ofReal_sum_of_nonneg]
      · simp
      · intro x hx
@@ -269,7 +269,7 @@ lemma kld_eq_kld_supp (p q : pmf Ω)[Dominates q p] :
       (∑ x : Ω, p x * log (p x / q x)) =
         ∑ x ∈ Finset.filter (fun x : Ω ↦ p x ≠ 0) Finset.univ,
             p x * log (p x / q x) := by
-      simp [Finset.sum_filter, mem_support_iff]
+      simp [Finset.sum_filter]
       apply Finset.sum_congr rfl
       intro x hx
       split_ifs with h
