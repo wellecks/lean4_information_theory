@@ -34,7 +34,6 @@ References:
 
 Author: Sean Welleck
 -/
-import LLMlean
 
 import InformationTheory.InformationTheory
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
@@ -160,7 +159,13 @@ theorem tvd_is_fdivergence (p q : pmf Ω) [Dominates q p] :
   field_simp
   by_cases hq : q x = 0
   · simp_all [dominates_qx0_px0 p q x hq]
-  · field_simp [px_pos, abs_div, abs_of_pos]
+  · have hq_pos : 0 < q x := px_pos q x hq
+    have h1 : p.f x / q.f x - 1 = (p.f x - q.f x) / q.f x := by
+      field_simp [hq]
+    rw [h1]
+    rw [abs_div]
+    rw [abs_of_pos hq_pos]
+    field_simp
 
 theorem tvd_nonneg (p q : pmf Ω) [Dominates q p] :
   0 ≤ tvd p q := by
@@ -179,7 +184,7 @@ theorem tvd_leq_one (p q : pmf Ω) [Dominates q p] : tvd p q ≤ 1 := by
           intro x hx
           rw [← mul_add]
           apply mul_le_mul_of_nonneg_left
-          apply abs_add
+          apply abs_add_le
           norm_num
       _ ≤ 1 := by
           calc ∑ x, (1/2*|- q x| + 1/2*|p x|)
@@ -194,7 +199,7 @@ theorem tvd_leq_one (p q : pmf Ω) [Dominates q p] : tvd p q ≤ 1 := by
           norm_num
 
 theorem tvd_self (p : pmf Ω)[Dominates p p] : 0 = tvd p p := by
-  unfold tvd; field_simp
+  unfold tvd; simp
 
 theorem tvd_comm (p q : pmf Ω)[Dominates q p][Dominates p q] : tvd p q = tvd q p := by
   unfold tvd
@@ -205,13 +210,12 @@ theorem tvd_comm (p q : pmf Ω)[Dominates q p][Dominates p q] : tvd p q = tvd q 
 theorem tvd_triangle (p q r : pmf Ω) [Dominates q p][Dominates r q][Dominates r p] :
   tvd p r ≤ tvd p q + tvd q r := by
   unfold tvd
-  repeat (ring_nf; rw [← Finset.sum_mul])
-  field_simp
-  gcongr
   rw [← Finset.sum_add_distrib]
   apply Finset.sum_le_sum
   intro x hx
-  apply abs_sub_le
+  have h : |p x - r x| ≤ |p x - q x| + |q x - r x| := by
+    apply abs_sub_le
+  linarith
 
 theorem tvd_zero_iff_eq (p q : pmf Ω)[Dominates q p] : tvd p q = 0 ↔ p = q := by
   constructor
@@ -317,10 +321,19 @@ theorem hellingerSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
   by_cases hq : q x = 0
   · simp_all [dominates_qx0_px0 p q x hq]
   · have hq_pos : 0 < q x := px_pos q x hq
-    field_simp
+    rw [sqrt_div]
+    have sqq_ne_zero : √(q.f x) ≠ 0 := by
+      intro h
+      rw [Real.sqrt_eq_zero] at h
+      exact hq h
+      exact q.non_neg x
+    field_simp [sqq_ne_zero]
+    rw [sq_sqrt]
+    exact q.non_neg x
+    exact p.non_neg x
 
 theorem hellingerSq_self (p : pmf Ω)[Dominates p p] : 0 = hellingerSq p p := by
-  unfold hellingerSq; field_simp
+  unfold hellingerSq; simp
 
 theorem hellingerSq_comm (p q : pmf Ω)[Dominates q p][Dominates p q] :
   hellingerSq p q = hellingerSq q p := by
@@ -345,7 +358,7 @@ theorem hellingerSq_zero_iff_eq (p q : pmf Ω)[Dominates q p]
       · exact p.non_neg x
       · exact q.non_neg x
     · intro x hx
-      simp [mul_nonneg, pow_two_nonneg]
+      simp [pow_two_nonneg]
   · intro h
     unfold hellingerSq
     rw [h]
@@ -369,12 +382,7 @@ lemma tsybakov_hellingerSq_multiplicative_form (p q : pmf Ω)[Dominates q p]
     ring
   suffices ∑ x, (√(p.f x) - √(q.f x)) ^ 2 = 2 - ∑ x, 2*√(p.f x * q.f x) by
     rw [← Finset.sum_div, this]
-    field_simp
-    rw [sub_mul]
-    rw [Finset.sum_mul]
-    field_simp
-    apply Finset.sum_congr rfl
-    intro x hx
+    rw [← Finset.mul_sum]
     ring
   simp [h₁, h₂]
 
@@ -430,10 +438,9 @@ theorem chiSq_is_fdivergence (p q : pmf Ω) [Dominates q p] :
   by_cases hq : q x = 0
   · simp_all
   · field_simp
-    ring
 
 theorem chiSq_self (p : pmf Ω)[Dominates p p] : 0 = chiSq p p := by
-  unfold chiSq; field_simp
+  unfold chiSq; simp
 
 theorem chiSq_zero_iff_eq (p q : pmf Ω)[Dominates q p]
   : chiSq p q = 0 ↔ p = q := by
@@ -476,7 +483,7 @@ lemma max_min_eq_two (p q : pmf Ω) [Dominates q p] :
 lemma max_eq_two_min (p q : pmf Ω) [Dominates q p] :
   ∑ x, max (p x) (q x) = 2 - ∑ x, min (p x) (q x) := by
   rw [← max_min_eq_two p q]
-  field_simp
+  linarith
 
 lemma sum_sqrt_mul_sq_le_sum_mul_sum {Ω : Type*} [Fintype Ω]
     (a b : Ω → ℝ) (ha_nonneg : ∀ x, 0 ≤ a x) (hb_nonneg : ∀ x, 0 ≤ b x) :
@@ -566,9 +573,18 @@ theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
         rw [Finset.mul_sum]
         apply Finset.sum_congr rfl
         intro x hx
-        field_simp
+        simp at hx
+        have hq := dominates_pxne0_qxne0 p q x hx
         rw [sqrt_div (p.non_neg x)]
+        rw [sq]
+        rw [Real.log_mul]
         ring
+        apply div_ne_zero
+        rwa [sqrt_ne_zero (p.non_neg x)]
+        rwa [sqrt_ne_zero (q.non_neg x)]
+        apply div_ne_zero
+        rwa [sqrt_ne_zero (p.non_neg x)]
+        rwa [sqrt_ne_zero (q.non_neg x)]
     _ = -2*(∑ x ∈ p.support, (p x)*(log ((√(q x) / √(p x) - 1) + 1))) := by
         rw [Finset.mul_sum, Finset.mul_sum]
         apply Finset.sum_congr rfl
@@ -576,6 +592,7 @@ theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
         field_simp
         simp at hx
         have hq := dominates_pxne0_qxne0 p q x hx
+        simp
         rw [Real.log_div, Real.log_div]
         ring
         · rwa [sqrt_ne_zero (q.non_neg x)]
@@ -588,7 +605,8 @@ theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
         intro x hx
         field_simp
         simp at hx
-        rw [mul_le_mul_left]
+        simp
+        rw [mul_le_mul_iff_right₀]
         rw [sqrt_div (q.non_neg x)]
         apply Real.log_le_sub_one_of_pos
         have hqx_pos : 0 < q.f x := px_pos q x (dominates_pxne0_qxne0 p q x hx)
@@ -605,6 +623,7 @@ theorem hellingerSq_le_kld (p q : pmf Ω) [Dominates q p] :
           rw [sqrt_div (q.non_neg x)]
         rw [Finset.sum_sub_distrib]
         field_simp
+        simp
         apply Finset.sum_congr rfl
         intro x hx
         rw [mul_comm]
@@ -648,7 +667,12 @@ theorem pinsker_tvd_kl (p q : pmf Ω)[Dominates q p] :
       apply Finset.sum_congr rfl
       intro x hx
       have hq_pos : 0 < q x := (mem_support_pos q x).mp hx
-      field_simp [abs_div, abs_of_pos hq_pos]
+      have h_eq : p.f x / q.f x - 1 = (p.f x - q.f x) / q.f x := by
+        field_simp [hq_pos]
+      rw [h_eq]
+      rw [abs_div]
+      rw [abs_of_pos hq_pos]
+      field_simp
     _ = (1/2) * ∑ x ∈ Sq, √(((p x)/(q x) - 1)^2) * (q x) := by
       apply congr_arg
       apply Finset.sum_congr rfl
@@ -711,16 +735,13 @@ theorem pinsker_tvd_kl (p q : pmf Ω)[Dominates q p] :
         sqrt (∑ x ∈ Sq, q x * klFun (p x / q x))) := by
       congr 4
       · ext x
-        field_simp
         rw [sq_sqrt]
-        · by_cases hq: q x = 0
-          · simp_all
-          · have hqpos : q x > 0 := by exact px_pos q x hq
-            have hp : p x ≥ 0 := by exact p.non_neg x
-            ring_nf
-            field_simp
-            simp_all
-            linarith [hqpos, hp]
+        by_cases hq: q x = 0
+        · simp_all
+        · have hqpos : q x > 0 := by exact px_pos q x hq
+          apply mul_nonneg (le_of_lt hqpos)
+          have hpq : p x / q x ≥ 0 := div_nonneg (p.non_neg x) (q.non_neg x)
+          linarith
       · ext x
         rw [sq_sqrt]
         by_cases hq: q x = 0
@@ -737,7 +758,6 @@ theorem pinsker_tvd_kl (p q : pmf Ω)[Dominates q p] :
             simp at hx
             exact px_pos q x hx
           field_simp [hq]
-          ring
         have h' : ∑ x ∈ Sq, (4/3*q x + 2/3*p x) = 4/3 * ∑ x ∈ Sq, q x + 2/3 * ∑ x ∈ Sq, p x := by
           rw [Finset.sum_add_distrib, Finset.mul_sum, Finset.mul_sum]
         rw [h, h']
@@ -769,8 +789,14 @@ theorem pinsker_tvd_kl (p q : pmf Ω)[Dominates q p] :
       rw [h2, h3]
       rw [← Real.sqrt_mul (by linarith)]
       field_simp
-      rw [mul_comm, ← mul_assoc]
       simp
       rw [mul_comm]
+      ring_nf
+      have : (√2)⁻¹ * 2 = √2 := by
+        field_simp
+        rw [sq_sqrt]
+        norm_num
+      rw [mul_assoc, this]
     _ = √(kld p q / 2) := by
-      field_simp [kld]
+      unfold kld
+      ring_nf
